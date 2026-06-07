@@ -9,10 +9,24 @@ import {
 import Image from "next/image";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-export const DataContext = createContext<{data: {challenges: { [a: number]: {name: string, description: string, levelToIconPath: { [x: string]: string; }}}}, loading: boolean}>({ data: { challenges: {}}, loading: true });
+export type ChallengeData = {
+  name: string;
+  description: string;
+  levelToIconPath: { [x: string]: string };
+  thresholds?: { [key: string]: { value: number } };
+  tags?: { isCapstone?: string; parent?: string; isCategory?: string; priority?: string };
+  source?: string;
+  availableIds?: number[];
+};
+
+export type TitleInfo = { itemId: number; name: string };
+export type TitleMap = { [itemId: number]: string };
+
+export const DataContext = createContext<{data: {challenges: { [a: number]: ChallengeData }}, titles: TitleMap, loading: boolean}>({ data: { challenges: {}}, titles: {}, loading: true });
 
 export const DataProvider = ({children}: Readonly<{children: React.ReactNode;}>) => {
 	const [data, setData] = useState({ challenges: {} });
+	const [titles, setTitles] = useState<TitleMap>({});
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -20,12 +34,22 @@ export const DataProvider = ({children}: Readonly<{children: React.ReactNode;}>)
 			.then((res) => res.json())
 			.then((data) => {
 				setData(data);
+				if (data.titles) {
+					const map: TitleMap = {};
+					for (const uuid of Object.keys(data.titles)) {
+						const t: TitleInfo = data.titles[uuid];
+						if (t.itemId != null && t.name) {
+							map[t.itemId] = t.name;
+						}
+					}
+					setTitles(map);
+				}
 				setLoading(false);
 			});
 	}, []);
 
 	return (
-		<DataContext.Provider value={{ data, loading }}>
+		<DataContext.Provider value={{ data, titles, loading }}>
 			{children}
 		</DataContext.Provider>
 	);

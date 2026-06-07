@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import Link from 'next/link';
 import "./globals.css";
 import React from "react";
+import { DataProvider } from "@/lib/utils1";
+import NavBar from "@/components/NavBar";
 
 export const metadata: Metadata = {
 	title: "challenges.lol",
@@ -12,10 +13,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 	return (
 		<html lang="en">
 			<body className="min-h-screen bg-background text-foreground">
-				<div className="relative min-h-screen">
+				<DataProvider>
+				<div className="min-h-screen">
 					{/* Background pattern */}
 					<div
-						className="absolute inset-0 z-0 pointer-events-none"
+						className="fixed inset-0 z-0 pointer-events-none"
 						style={{
 							backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.1) 1px, transparent 1px)`,
 							backgroundSize: '20px 20px',
@@ -24,52 +26,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 						}}
 					/>
 
-					{/* Header */}
-					<header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-						<div className="container flex h-16 items-center justify-between mx-auto">
-							<div className="flex items-center gap-6 md:gap-10">
-								<Link href="/" className="flex items-center space-x-2">
-									<span className="inline-block font-bold text-xl">challenges.lol</span>
-								</Link>
-								<nav className="flex gap-6">
-									<Link href="#challenges" className="text-sm font-medium transition-colors hover:text-primary">
-										Challenges
-									</Link>
-									<Link href="#leaderboards" className="text-sm font-medium transition-colors hover:text-primary">
-										Leaderboards
-									</Link>
-									<Link href="#search" className="text-sm font-medium transition-colors hover:text-primary">
-										User Search
-									</Link>
-									<Link href="/crystal" className="text-sm font-bold bg-gradient-to-r from-cyan-500 to-pink-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
-										Crystal
-									</Link>
-								</nav>
-							</div>
-							<div className="flex items-center gap-6 md:gap-10">
-								<nav className="flex gap-6">
-									<Link href="#team-builder" className="text-sm font-medium transition-colors hover:text-primary">
-										Team Builder
-									</Link>
-									<Link href="#help" className="text-sm font-medium transition-colors hover:text-primary">
-										Wiki
-									</Link>
-									<Link href="/getting-started" className="text-sm font-medium transition-colors hover:text-primary">
-										Getting Started
-									</Link>
-									<Link href="#about" className="text-sm font-medium transition-colors hover:text-primary">
-										About
-									</Link>
-								</nav>
-							</div>
-						</div>
-					</header>
+					<NavBar />
 
 					{/* Main Content */}
 					<main className="flex-1 relative z-10 h-full">
 						{children}
 					</main>
 				</div>
+				</DataProvider>
 			</body>
 		</html>
 	);
