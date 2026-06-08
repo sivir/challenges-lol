@@ -1,4 +1,24 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+	title: "Crystal — League of Legends Challenge Tracker Desktop App",
+	description: "Crystal is a desktop companion for League of Legends that tracks challenges, mastery, skins, eternals, and champ select in real time. Download for Windows.",
+	openGraph: {
+		title: "Crystal — League of Legends Challenge Tracker Desktop App",
+		description: "A desktop companion that connects to your League Client to track challenges, mastery, skins, eternals, and champ select in real time.",
+	},
+};
+
+const jsonLd = {
+	"@context": "https://schema.org",
+	"@type": "SoftwareApplication",
+	name: "Crystal",
+	applicationCategory: "GameApplication",
+	operatingSystem: "Windows",
+	description: "A desktop companion for League of Legends that tracks challenges, mastery, skins, eternals, and champ select in real time.",
+	url: "https://challenges.lol/crystal",
+};
 
 const features = [
     {
@@ -54,6 +74,7 @@ const features = [
 export default function Page() {
     return (
         <div className="min-h-screen flex flex-col items-center px-4 py-12 md:py-24">
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
             <div className="w-full max-w-6xl space-y-24">
                 {/* Hero */}
                 <section className="text-center space-y-8 max-w-4xl mx-auto">

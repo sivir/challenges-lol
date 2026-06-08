@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Float, MeshTransmissionMaterial, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -37,6 +37,9 @@ function Shard() {
 }
 
 export default function CrystalShard() {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    if (!mounted) return <div className="w-full h-full" />;
     return (
         <div className="w-full h-full">
             <Canvas camera={{ position: [0, 0, 5], fov: 45 }} dpr={[1, 2]} gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.5 }}>
