@@ -3,8 +3,11 @@ import Image from 'next/image';
 import { DataProvider, InlineChallenge } from "@/lib/utils1";
 
 export const metadata: Metadata = {
-	title: "Getting Started — League of Legends Challenge Guide",
+	title: "Getting Started with League of Legends Challenges — challenges.lol",
 	description: "Learn how League of Legends challenges work: categories, tiers, progression, and how to track them with challenges.lol.",
+	alternates: {
+		canonical: "/getting-started",
+	},
 };
 
 export default function AboutPage() {

@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-	title: "Crystal — League of Legends Challenge Tracker Desktop App",
-	description: "Crystal is a desktop companion for League of Legends that tracks challenges, mastery, skins, eternals, and champ select in real time. Download for Windows.",
+	title: "Crystal: Desktop League of Legends Challenge Tracker — challenges.lol",
+	description: "Crystal is a desktop companion app that tracks League of Legends challenges, champion mastery, skins, eternals, and champ select in real time.",
+	alternates: {
+		canonical: "/crystal",
+	},
 	openGraph: {
-		title: "Crystal — League of Legends Challenge Tracker Desktop App",
-		description: "A desktop companion that connects to your League Client to track challenges, mastery, skins, eternals, and champ select in real time.",
+		title: "Crystal: Desktop League of Legends Challenge Tracker — challenges.lol",
+		description: "A desktop companion app that connects to your League Client to track challenges, mastery, skins, eternals, and champ select in real time.",
 	},
 };
 

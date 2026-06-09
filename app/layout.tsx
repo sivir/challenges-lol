@@ -5,18 +5,24 @@ import { DataProvider } from "@/lib/utils1";
 import NavBar from "@/components/NavBar";
 
 export const metadata: Metadata = {
+	metadataBase: new URL("https://challenges.lol"),
 	title: {
-		default: "challenges.lol — League of Legends Challenge Tracker",
+		default: "League of Legends Challenge Tracker — challenges.lol",
 		template: "%s | challenges.lol",
 	},
-	description: "Track League of Legends challenges, champion mastery, and progression. View detailed stats for any player including mastery class challenges, optimal paths, and more.",
+	description: "Track your League of Legends challenges, champion mastery, and progression. View detailed player stats, mastery class challenges, and optimal progression paths.",
+	keywords: ["league of legends challenges", "league of legends challenge tracker", "lol challenges", "champion mastery tracker", "lol progression tracker"],
+	alternates: {
+		canonical: "/",
+	},
 	openGraph: {
-		title: "challenges.lol — League of Legends Challenge Tracker",
-		description: "Track League of Legends challenges, champion mastery, and progression with detailed stats and optimal path analysis.",
+		title: "League of Legends Challenge Tracker — challenges.lol",
+		description: "Track your League of Legends challenges, champion mastery, and progression with detailed player stats, mastery class challenges, and optimal progression paths.",
 		siteName: "challenges.lol",
 		type: "website",
+		url: "https://challenges.lol",
 	},
-		twitter: {
+	twitter: {
 		card: "summary_large_image",
 	},
 };
