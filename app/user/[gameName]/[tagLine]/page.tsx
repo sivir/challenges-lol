@@ -303,7 +303,7 @@ export default function UserPage() {
         }));
 
         const m10_threshold = 75600;
-        const effective_sort_val = (c: any) => path_ids.has(c.id) ? Math.max(c.mastery_points, m10_threshold) : c.mastery_points;
+        const effective_sort_val = (c: any) => (path_ids.has(c.id) ? Math.max(c.mastery_points, m10_threshold) : c.mastery_points);
         const effective_sorted = [...all_champions].sort((a, b) => effective_sort_val(b) - effective_sort_val(a));
         const assigned = new Set<number>();
         const total_slots = 150;
@@ -677,7 +677,7 @@ export default function UserPage() {
                         <CardTitle className="text-sm font-medium">Mastery Class Challenges</CardTitle>
                     </CardHeader>
                     <CardContent className="pb-3">
-                        <div className="flex flex-wrap">
+                        <div className="flex flex-nowrap">
                             {(() => {
                                 const challenge_map = data.challenges;
                                 return CLASSES.map((class_name, index) => {
@@ -844,9 +844,7 @@ export default function UserPage() {
                                     <span className="text-muted-foreground">Path to M10</span>
                                     <span className="font-medium tabular-nums">{masterEffort.rest_to_m10_needed.toLocaleString()}</span>
                                 </div>
-                                <div className="text-[10px] text-muted-foreground pl-2 border-l border-border mb-1.5">
-                                    {masterEffort.path_total} path champions
-                                </div>
+                                <div className="text-[10px] text-muted-foreground pl-2 border-l border-border mb-1.5">{masterEffort.path_total} path champions</div>
                                 <div className="flex justify-between items-baseline">
                                     <span className="text-muted-foreground">Catch &apos;em All (150 × 100k)</span>
                                     <span className="font-medium tabular-nums">{masterEffort.catch_em_all_needed.toLocaleString()}</span>
@@ -1079,12 +1077,7 @@ export default function UserPage() {
                                                     step={1000}
                                                     className="w-[140px]"
                                                 />
-                                                <Input
-                                                    type="number"
-                                                    value={customMasteryPoints}
-                                                    onChange={(e) => setCustomMasteryPoints(e.target.value)}
-                                                    className="w-[90px] h-7 text-xs"
-                                                />
+                                                <Input type="number" value={customMasteryPoints} onChange={(e) => setCustomMasteryPoints(e.target.value)} className="w-[90px] h-7 text-xs" />
                                                 {(() => {
                                                     const pts = Number(customMasteryPoints) || 0;
                                                     const mp = [0, 1800, 4200, 6600, 9000, 10000, 11000, 11000, 11000];
@@ -1130,15 +1123,15 @@ export default function UserPage() {
                                                 const roles = champ_to_classes.get(champ_id) ?? [];
                                                 const ct = champion_targets.get(champ_id);
                                                 const path_champion_ids = new Set(optimalPath?.m10.champions.map((c: any) => c.id) ?? []);
-                                                  const badges: string[] = [];
-                                                  const ml = champion_max_labels.get(champ_id);
-                                                  if (ml === "one_trick") {
-                                                      badges.push("one_trick");
-                                                      badges.push("catch_em_all");
-                                                  } else if (ml === "catch_em_all") {
-                                                      badges.push("catch_em_all");
-                                                  }
-                                                  if (path_champion_ids.has(champ_id)) badges.push("path");
+                                                const badges: string[] = [];
+                                                const ml = champion_max_labels.get(champ_id);
+                                                if (ml === "one_trick") {
+                                                    badges.push("one_trick");
+                                                    badges.push("catch_em_all");
+                                                } else if (ml === "catch_em_all") {
+                                                    badges.push("catch_em_all");
+                                                }
+                                                if (path_champion_ids.has(champ_id)) badges.push("path");
                                                 return (
                                                     <Card key={champ_id} className="p-2 space-y-1">
                                                         <div className="flex items-center gap-2">
@@ -1156,7 +1149,12 @@ export default function UserPage() {
                                                                     {badges.map((b) => (
                                                                         <Tooltip key={b} delayDuration={200}>
                                                                             <TooltipTrigger asChild>
-                                                                                <span className={cn("text-sm leading-none cursor-help", b === "one_trick" ? "text-amber-400" : b === "catch_em_all" ? "text-cyan-400" : "text-emerald-400")}>
+                                                                                <span
+                                                                                    className={cn(
+                                                                                        "text-sm leading-none cursor-help",
+                                                                                        b === "one_trick" ? "text-amber-400" : b === "catch_em_all" ? "text-cyan-400" : "text-emerald-400",
+                                                                                    )}
+                                                                                >
                                                                                     {b === "one_trick" ? "★" : b === "catch_em_all" ? "◎" : "◇"}
                                                                                 </span>
                                                                             </TooltipTrigger>

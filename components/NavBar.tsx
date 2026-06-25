@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ function DisabledNavItem({ label }: { label: string }) {
 
 export default function NavBar() {
     const router = useRouter();
+    const pathname = usePathname();
     const [searchInput, setSearchInput] = useState("");
 
     const handleSearch = (e: React.FormEvent) => {
@@ -43,12 +44,12 @@ export default function NavBar() {
     return (
         <TooltipProvider>
             <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/95">
-                <div className="container flex h-16 items-center justify-between mx-auto">
+                <div className="container grid grid-cols-3 items-center h-16 mx-auto">
                     <div className="flex items-center gap-6 md:gap-10">
                         <Link href="/" className="flex items-center space-x-2">
                             <span className="inline-block font-bold text-xl">challenges.lol</span>
                         </Link>
-                        <nav className="flex gap-6">
+                        <nav className="hidden md:flex gap-6">
                             <DisabledNavItem label="Challenges" />
                             <DisabledNavItem label="Leaderboards" />
                             <Link href="/crystal" className="text-sm font-bold bg-gradient-to-r from-cyan-500 to-pink-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
@@ -56,19 +57,23 @@ export default function NavBar() {
                             </Link>
                         </nav>
                     </div>
-                    <div className="flex items-center gap-6 md:gap-10">
-                        <form onSubmit={handleSearch} className="flex items-center gap-1">
-                            <Input
-                                placeholder="Player#Tag"
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                className="w-[160px] h-8 text-xs"
-                            />
-                            <Button type="submit" size="icon" variant="ghost" className="h-8 w-8" disabled={!searchInput.includes("#")}>
-                                <Search className="h-4 w-4" />
-                            </Button>
-                        </form>
-                        <nav className="flex gap-6">
+                    <div className="flex justify-center">
+                        {pathname !== "/" && (
+                            <form onSubmit={handleSearch} className="flex items-center gap-1">
+                                <Input
+                                    placeholder="Player#Tag"
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    className="w-[280px] h-9 text-sm"
+                                />
+                                <Button type="submit" size="icon" variant="ghost" className="h-9 w-9" disabled={!searchInput.includes("#")}>
+                                    <Search className="h-4 w-4" />
+                                </Button>
+                            </form>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-6 md:gap-10 justify-end">
+                        <nav className="hidden md:flex gap-6">
                             <DisabledNavItem label="Team Builder" />
                             <DisabledNavItem label="Wiki" />
                             <Link href="/getting-started" className="text-sm font-medium transition-colors hover:text-primary">

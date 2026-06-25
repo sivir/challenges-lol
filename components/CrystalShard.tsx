@@ -7,15 +7,46 @@ import * as THREE from "three";
 
 function Shard() {
     const geo = useMemo(() => {
-        const g = new THREE.OctahedronGeometry(0.6, 0);
-        const pos = g.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            const y = pos.getY(i);
-            pos.setY(i, y * 3.5);
+        const geometry = new THREE.BufferGeometry();
+        
+        const H1 = 1.6; // polar height
+        const H2 = 0.4; // equatorial height offset
+        const R = 0.6;  // radius
+        
+        // 10 vertices defining the tetragonal trapezohedron
+        const vertices = new Float32Array([
+            0, H1, 0,                                             // 0: Top pole
+            R, H2, 0,                                             // 1: A0 (0 rad)
+            R * Math.cos(Math.PI/4), -H2, R * Math.sin(Math.PI/4), // 2: B0 (pi/4 rad)
+            0, H2, R,                                             // 3: A1 (pi/2 rad)
+            R * Math.cos(3*Math.PI/4), -H2, R * Math.sin(3*Math.PI/4), // 4: B1 (3pi/4 rad)
+            -R, H2, 0,                                            // 5: A2 (pi rad)
+            R * Math.cos(5*Math.PI/4), -H2, R * Math.sin(5*Math.PI/4), // 6: B2 (5pi/4 rad)
+            0, H2, -R,                                            // 7: A3 (3pi/2 rad)
+            R * Math.cos(7*Math.PI/4), -H2, R * Math.sin(7*Math.PI/4), // 8: B3 (7pi/4 rad)
+            0, -H1, 0                                             // 9: Bottom pole
+        ]);
+        
+        const indices = [];
+        for (let k = 0; k < 4; k++) {
+            const a0 = 1 + k * 2;
+            const b0 = 2 + k * 2;
+            const a1 = 1 + ((k + 1) % 4) * 2;
+            const b1 = 2 + ((k + 1) % 4) * 2;
+            
+            // Upper kite faces (split into 2 triangles)
+            indices.push(0, a0, b0);
+            indices.push(0, b0, a1);
+            
+            // Lower kite faces (split into 2 triangles)
+            indices.push(9, b0, a1);
+            indices.push(9, b1, a1);
         }
-        pos.needsUpdate = true;
-        g.computeVertexNormals();
-        return g;
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        return geometry;
     }, []);
 
     return (
@@ -23,13 +54,15 @@ function Shard() {
             <mesh geometry={geo}>
                 <MeshTransmissionMaterial
                     backside
-                    thickness={0.5}
-                    roughness={0.05}
-                    metalness={0.1}
-                    ior={1.5}
-                    color="#8b5cf6"
-                    emissive="#6d28d9"
-                    emissiveIntensity={0.15}
+                    side={THREE.DoubleSide}
+                    thickness={0.8}
+                    roughness={0.1}
+                    transmission={0.9}
+                    ior={1.7}
+                    chromaticAberration={0.06}
+                    color="#ef4444"
+                    emissive="#991b1b"
+                    emissiveIntensity={0.3}
                 />
             </mesh>
         </Float>
@@ -43,11 +76,13 @@ export default function CrystalShard() {
     return (
         <div className="w-full h-full">
             <Canvas camera={{ position: [0, 0, 5], fov: 45 }} dpr={[1, 2]} gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.5 }}>
-                <ambientLight intensity={0.3} />
-                <pointLight position={[0, 5, 0]} intensity={0.8} color="#ffffff" />
-                <pointLight position={[0, 0, 5]} intensity={0.6} color="#a78bfa" />
-                <pointLight position={[-5, 0, 0]} intensity={0.6} color="#f9a8d4" />
-                <pointLight position={[4, -3, -4]} intensity={0.8} color="#ffffff" />
+                <ambientLight intensity={0.4} />
+                {/* Directional light to cast strong specular highlights on edges */}
+                <directionalLight position={[5, 5, 5]} intensity={1.5} color="#ffffff" />
+                <directionalLight position={[-5, 3, -2]} intensity={0.8} color="#fca5a5" />
+                <pointLight position={[0, 0, 5]} intensity={0.8} color="#fca5a5" />
+                <pointLight position={[-5, 0, 0]} intensity={0.8} color="#f87171" />
+                <pointLight position={[4, -3, -4]} intensity={1.0} color="#ef4444" />
                 <Shard />
                 <OrbitControls
                     enablePan={false}

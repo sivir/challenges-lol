@@ -54,7 +54,7 @@ export default function HomePageClient() {
 							</Link>
 
 						</Button>
-						<Button size="lg" asChild>
+						<Button size="lg" asChild className="bg-gradient-to-r from-cyan-500 to-pink-500 text-white hover:from-cyan-600 hover:to-pink-600 shadow-lg hover:shadow-xl hover:shadow-cyan-500/25 hover:scale-105 transition-all duration-300 border-0">
 							<Link href="/crystal">
 								<Download className="mr-2 h-4 w-4" />
 								Download Crystal
