@@ -17,7 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Text, XAxis, YAxis } from "recharts";
 import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { getUserData, RiotChallengeEntry, RiotData, levels, get_level_color, get_progress_color } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, format_champion_name, is_classic_champion, is_mastery_champion, is_standard_champion } from "@/lib/utils";
 import { DataContext, ChallengeData } from "@/lib/utils1";
 import { build_mastery_class_data, compute_optimal_paths, points_to_target_level, type ChallengeThresholds } from "@/lib/optimal-path";
 
@@ -130,12 +130,14 @@ export default function UserPage() {
     } | null>(null);
     const [championNames, setChampionNames] = useState<Map<number, string>>(new Map());
     const [classChampionIds, setClassChampionIds] = useState<Map<string, number[]>>(new Map());
+    const [classicChampionIds, setClassicChampionIds] = useState<number[]>([]);
     const [championRegion, setChampionRegion] = useState<Map<number, string>>(new Map());
     const [selectedClass, setSelectedClass] = useState("all");
     const [selectedRegion, setSelectedRegion] = useState("all");
     const [goalMode, setGoalMode] = useState<"max" | "m10" | "m7" | "m5" | "next">("max");
     const [masteryFilter, setMasteryFilter] = useState<"none" | "m5" | "m7" | "m10" | "custom">("none");
     const [customMasteryPoints, setCustomMasteryPoints] = useState("100000");
+    const [showAllClosest, setShowAllClosest] = useState(false);
 
     const globetrotter_regions: { [key: number]: string } = {
         303501: "Bandle City",
@@ -181,26 +183,42 @@ export default function UserPage() {
     useEffect(() => {
         fetch("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
             .then((res) => res.json())
-            .then((data: any[]) => {
+            .then((summary: any[]) => {
+                const list = Array.isArray(summary) ? summary : [];
                 const names = new Map<number, string>();
-                const class_map = new Map<string, number[]>();
-                CLASSES.forEach((c) => class_map.set(c, []));
-                for (const champ of data) {
-                    if (champ.id > 0 && champ.id < 3000) {
-                        names.set(champ.id, champ.name);
-                        for (const role of champ.roles ?? []) {
-                            const normalized = role.charAt(0).toUpperCase() + role.slice(1);
-                            if (class_map.has(normalized)) {
-                                class_map.get(normalized)!.push(champ.id);
-                            }
-                        }
+                const role_map = new Map<string, number[]>();
+                const classic_ids: number[] = [];
+                CLASSES.forEach((c) => role_map.set(c, []));
+                for (const champ of list) {
+                    const id = Number(champ.id);
+                    if (!is_mastery_champion(id)) continue;
+                    names.set(id, format_champion_name(String(champ.name ?? ""), id));
+                    if (is_classic_champion(id)) classic_ids.push(id);
+                    for (const role of champ.roles ?? []) {
+                        const normalized = role.charAt(0).toUpperCase() + role.slice(1);
+                        if (role_map.has(normalized)) role_map.get(normalized)!.push(id);
                     }
                 }
                 setChampionNames(names);
-                setClassChampionIds(class_map);
+                setClassicChampionIds(classic_ids);
+                setClassChampionIds(role_map);
             })
             .catch((e) => console.error("champion-summary fetch error:", e));
     }, []);
+
+    useEffect(() => {
+        if (challengesLoading || !data.challenges) return;
+        const class_map = new Map<string, number[]>();
+        let used_available_ids = false;
+        CLASSES.forEach((class_name, index) => {
+            const ids = data.challenges[M7_IDS[index]]?.availableIds;
+            if (ids && ids.length > 0) {
+                used_available_ids = true;
+                class_map.set(class_name, ids.filter(is_mastery_champion));
+            }
+        });
+        if (used_available_ids) setClassChampionIds(class_map);
+    }, [data.challenges, challengesLoading]);
 
     useEffect(() => {
         if (challengesLoading || !data.challenges) return;
@@ -286,6 +304,33 @@ export default function UserPage() {
         return compute_optimal_paths(classData);
     }, [classData]);
 
+    const all_progress_items = useMemo(() => {
+        return classData
+            .flatMap((data) => [
+                {
+                    id: `${data.class_name}-M7`,
+                    class_name: data.class_name,
+                    type: "M7" as const,
+                    info: data.m7_info,
+                    progress: data.m7_progress,
+                    champions: data.champions,
+                },
+                {
+                    id: `${data.class_name}-M10`,
+                    class_name: data.class_name,
+                    type: "M10" as const,
+                    info: data.m10_info,
+                    progress: data.m10_progress,
+                    champions: data.champions,
+                },
+            ])
+            .sort((a, b) => {
+                const a_val = a.progress.possible ? a.progress.total : Infinity;
+                const b_val = b.progress.possible ? b.progress.total : Infinity;
+                return a_val - b_val;
+            });
+    }, [classData]);
+
     const masterEffort = useMemo(() => {
         if (classData.length === 0 || masteryData.length === 0 || !optimalPath) return null;
 
@@ -295,7 +340,9 @@ export default function UserPage() {
             mastery_level: number;
             mastery_points: number;
             championPointsUntilNextLevel: number;
-        }[] = masteryData.map((m: any) => ({
+        }[] = masteryData
+            .filter((m: any) => is_standard_champion(m.championId))
+            .map((m: any) => ({
             id: m.championId,
             mastery_level: m.championLevel,
             mastery_points: m.championPoints,
@@ -351,7 +398,7 @@ export default function UserPage() {
 
     const champion_targets = useMemo(() => {
         const targets = new Map<number, { target: number; progress: number; label: string }>();
-        if (!masteryData.length) return targets;
+        if (!masteryData.length && !classicChampionIds.length) return targets;
         const mp = [0, 1800, 4200, 6600, 9000, 10000, 11000, 11000, 11000];
         const total_to = (lvl: number) => {
             let s = 0;
@@ -359,6 +406,17 @@ export default function UserPage() {
             return s;
         };
         const sorted = [...masteryData].sort((a: any, b: any) => b.championPoints - a.championPoints);
+        const mastery_ids = new Set(sorted.map((m: any) => Number(m.championId)));
+        for (const id of classicChampionIds) {
+            if (!mastery_ids.has(id)) {
+                sorted.push({
+                    championId: id,
+                    championLevel: 0,
+                    championPoints: 0,
+                    championPointsUntilNextLevel: 0,
+                });
+            }
+        }
 
         if (goalMode === "next") {
             sorted.forEach((entry: any) => {
@@ -417,7 +475,9 @@ export default function UserPage() {
         const total_slots = 150;
         const m10_threshold = 75600;
 
-        const effective_sorted = [...masteryData].sort((a: any, b: any) => {
+        const effective_sorted = [...masteryData]
+            .filter((m: any) => is_standard_champion(m.championId))
+            .sort((a: any, b: any) => {
             const ea = path_ids.has(a.championId) ? Math.max(a.championPoints ?? 0, m10_threshold) : (a.championPoints ?? 0);
             const eb = path_ids.has(b.championId) ? Math.max(b.championPoints ?? 0, m10_threshold) : (b.championPoints ?? 0);
             return eb - ea;
@@ -435,14 +495,16 @@ export default function UserPage() {
             }
         });
         return targets;
-    }, [masteryData, optimalPath, goalMode]);
+    }, [masteryData, optimalPath, goalMode, classicChampionIds]);
 
     const champion_max_labels = useMemo(() => {
         const labels = new Map<number, "one_trick" | "catch_em_all">();
         if (!masteryData.length || !optimalPath) return labels;
         const path_ids = new Set(optimalPath.m10.champions.map((c) => c.id));
         const m10_threshold = 75600;
-        const effective_sorted = [...masteryData].sort((a: any, b: any) => {
+        const effective_sorted = [...masteryData]
+            .filter((m: any) => is_standard_champion(m.championId))
+            .sort((a: any, b: any) => {
             const ea = path_ids.has(a.championId) ? Math.max(a.championPoints ?? 0, m10_threshold) : (a.championPoints ?? 0);
             const eb = path_ids.has(b.championId) ? Math.max(b.championPoints ?? 0, m10_threshold) : (b.championPoints ?? 0);
             return eb - ea;
@@ -833,6 +895,84 @@ export default function UserPage() {
                                 });
                             })()}
                         </div>
+
+                        {all_progress_items.length > 0 && (() => {
+                            const items = showAllClosest ? all_progress_items : all_progress_items.slice(0, 1);
+                            return (
+                                <>
+                                    <Separator className="my-3" />
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm font-medium text-muted-foreground">
+                                                {showAllClosest ? "Class Challenge Progress" : "Closest Challenge"}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="text-[10px] text-primary hover:underline"
+                                                onClick={() => setShowAllClosest((v) => !v)}
+                                            >
+                                                {showAllClosest ? "Show closest" : "Show all"}
+                                            </button>
+                                        </div>
+                                        {items.map((item) => (
+                                            <div key={item.id} className="rounded-lg border bg-card p-3 space-y-2">
+                                                <div className="flex justify-between items-center gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="font-semibold text-sm truncate">{item.class_name}</span>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={
+                                                                item.type === "M7"
+                                                                    ? "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+                                                                    : "bg-blue-400/10 text-blue-400 hover:bg-blue-400/20"
+                                                            }
+                                                        >
+                                                            {item.type}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {item.progress.possible
+                                                                ? `${item.progress.total.toLocaleString()} pts needed`
+                                                                : `Need ${item.progress.champions_needed - item.progress.available} more`}
+                                                        </div>
+                                                        <div className="text-xs font-medium">
+                                                            {item.info.current} / {item.info.next_threshold}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {item.progress.possible && (
+                                                    <div className="grid grid-cols-1 gap-1.5">
+                                                        {item.champions
+                                                            .filter((c) => item.progress.selected_ids?.includes(c.id))
+                                                            .map((champ) => (
+                                                                <div key={champ.id} className="flex items-center gap-2 rounded-md border bg-muted/40 p-1.5">
+                                                                    <Image
+                                                                        src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champ.id}.png`}
+                                                                        alt=""
+                                                                        width={28}
+                                                                        height={28}
+                                                                        className="rounded-full shrink-0"
+                                                                        unoptimized
+                                                                    />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="text-xs font-medium truncate">
+                                                                            {championNames.get(champ.id) ?? champ.name}
+                                                                        </div>
+                                                                        <div className="text-[10px] text-primary font-mono">
+                                                                            {(item.type === "M7" ? champ.points_to_m7 : champ.points_to_m10).toLocaleString()} pts needed
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </CardContent>
                 </Card>
 
@@ -1004,11 +1144,25 @@ export default function UserPage() {
             {tab === "mastery" && (
                 <>
                     {(() => {
+                        const mastery_by_id = new Map(masteryData.map((m: any) => [Number(m.championId), m]));
+                        // Include classic champs from champion-summary even if Riot mastery data omits them.
+                        const display_mastery = [...masteryData];
+                        for (const id of classicChampionIds) {
+                            if (!mastery_by_id.has(id)) {
+                                display_mastery.push({
+                                    championId: id,
+                                    championLevel: 0,
+                                    championPoints: 0,
+                                    championPointsUntilNextLevel: 0,
+                                });
+                            }
+                        }
+
                         const classIds = selectedClass === "all" ? null : classChampionIds.get(selectedClass);
-                        const sorted = [...masteryData]
-                            .sort((a: any, b: any) => b.championPoints - a.championPoints)
+                        const sorted = [...display_mastery]
+                            .sort((a: any, b: any) => (b.championPoints ?? 0) - (a.championPoints ?? 0))
                             .filter((entry: any) => {
-                                const cid = entry.championId;
+                                const cid = Number(entry.championId);
                                 if (classIds && !classIds.includes(cid)) return false;
                                 if (selectedRegion !== "all" && championRegion.get(cid) !== selectedRegion) return false;
                                 if (masteryFilter === "m5" && entry.championLevel >= 5) return false;
@@ -1108,7 +1262,7 @@ export default function UserPage() {
 
                                 <Separator />
 
-                                {masteryData.length === 0 ? (
+                                {display_mastery.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">No mastery data available.</p>
                                 ) : sorted.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">No champions match the selected filters.</p>

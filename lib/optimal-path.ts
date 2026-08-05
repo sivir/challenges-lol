@@ -1,3 +1,5 @@
+import { is_mastery_champion } from "@/lib/utils";
+
 export type OptimalPathTarget = "M7" | "M10";
 
 export interface MasteryChallengeInfo {
@@ -179,7 +181,8 @@ export function build_mastery_class_data(params: {
 				m10_challenge_thresholds.get(m10_id) ?? ({} as ChallengeThresholds);
 
 			const champions: MasteryClassChampion[] = champion_ids
-				.filter((id) => id <= 3000)
+				.map((raw_id) => Number(raw_id))
+				.filter(is_mastery_champion)
 				.map((id) => {
 					const mastery = mastery_by_champion.get(id) ?? default_mastery;
 					const points_to_m7 = points_to_target_level(
