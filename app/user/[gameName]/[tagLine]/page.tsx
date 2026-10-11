@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Text, XAxis, YAxis } from "recharts";
 import { Search, ArrowUp, ArrowDown } from "lucide-react";
-import { getUserData, RiotChallengeEntry, RiotData, levels, get_level_color, get_progress_color } from "@/lib/supabase";
+import { getUserData, getCatalogChampions, RiotChallengeEntry, RiotData, levels, get_level_color, get_progress_color } from "@/lib/api";
 import { cn, format_champion_name, is_classic_champion, is_mastery_champion, is_standard_champion } from "@/lib/utils";
 import { DataContext, ChallengeData } from "@/lib/utils1";
 import { build_mastery_class_data, compute_optimal_paths, points_to_target_level, type ChallengeThresholds } from "@/lib/optimal-path";
@@ -101,17 +101,15 @@ type SortDirection = "asc" | "desc";
 
 export default function UserPage() {
     const params = useParams();
-    const searchParams = useSearchParams();
     const gameName = decodeURIComponent(params.gameName as string);
     const tagLine = decodeURIComponent(params.tagLine as string);
-    const region = searchParams.get("region") || "na";
     const riotId = `${gameName}#${tagLine}`;
 
     const { data, titles, loading: challengesLoading } = useContext(DataContext);
     const [riotData, setRiotData] = useState<RiotData | null>(null);
     const [actualName, setActualName] = useState(gameName);
     const [actualTag, setActualTag] = useState(tagLine);
-    const [detectedRegion, setDetectedRegion] = useState(region);
+    const [detectedRegion, setDetectedRegion] = useState("");
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [fetching, setFetching] = useState(true);
 
@@ -159,31 +157,39 @@ export default function UserPage() {
     useEffect(() => {
         setFetching(true);
         setFetchError(null);
-        getUserData(riotId, region)
+        getUserData(gameName, tagLine)
             .then((result) => {
-                if (!result) {
-                    setFetchError("Failed to load player data. Check the Riot ID and region.");
+                if (result.status === "missing") {
+                    setFetchError("Player not found. Check the Riot ID.");
                     return;
                 }
-                setRiotData(result.riot_data);
-                setMasteryData(result.mastery_data || []);
-                setSummonerData(result.summoner_data || null);
-                if (result.gameName) setActualName(result.gameName);
-                if (result.tagLine) setActualTag(result.tagLine);
-                if (result.region) setDetectedRegion(result.region);
+                if (result.status === "unavailable") {
+                    setFetchError("Failed to load player data. Please try again in a moment.");
+                    return;
+                }
+                const user = result.data;
+                setRiotData(user.riot_data);
+                setMasteryData(user.mastery_data || []);
+                setSummonerData(
+                    user.profile_icon_id != null || user.summoner_level != null
+                        ? { profileIconId: user.profile_icon_id ?? 0, summonerLevel: user.summoner_level ?? 0 }
+                        : null,
+                );
+                if (user.game_name) setActualName(user.game_name);
+                if (user.tag_line) setActualTag(user.tag_line);
+                if (user.region) setDetectedRegion(user.region);
             })
             .catch(() => setFetchError("An error occurred while fetching data."))
             .finally(() => setFetching(false));
-    }, [riotId, region]);
+    }, [gameName, tagLine]);
 
     useEffect(() => {
         document.title = `${actualName}#${actualTag} challenge data`;
     }, [actualName, actualTag]);
 
     useEffect(() => {
-        fetch("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
-            .then((res) => res.json())
-            .then((summary: any[]) => {
+        getCatalogChampions()
+            .then((summary) => {
                 const list = Array.isArray(summary) ? summary : [];
                 const names = new Map<number, string>();
                 const role_map = new Map<string, number[]>();
@@ -634,7 +640,6 @@ export default function UserPage() {
             <div className="flex items-center justify-center min-h-[50vh]">
                 <div className="text-center space-y-2 max-w-md">
                     <p className="text-destructive font-medium">{fetchError}</p>
-                    <p className="text-muted-foreground text-sm">Make sure the Riot ID and region are correct.</p>
                 </div>
             </div>
         );
@@ -676,9 +681,11 @@ export default function UserPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                                 <h1 className="text-2xl font-bold tracking-tight">{actualName}</h1>
                                 <span className="text-muted-foreground">#{actualTag}</span>
-                                <Badge variant="outline" className="text-xs">
-                                    {detectedRegion.toUpperCase()}
-                                </Badge>
+                                {detectedRegion && (
+                                    <Badge variant="outline" className="text-xs">
+                                        {detectedRegion.toUpperCase()}
+                                    </Badge>
+                                )}
                             </div>
                             {riotData.preferences?.title != null &&
                                 (() => {

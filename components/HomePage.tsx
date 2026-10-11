@@ -18,7 +18,7 @@ export default function HomePageClient() {
 		e.preventDefault();
 		const parts = searchInput.trim().split("#");
 		if (parts.length !== 2 || !parts[0] || !parts[1]) return;
-		router.push(`/user/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}?region=na`);
+		router.push(`/user/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`);
 	};
 
 	return (

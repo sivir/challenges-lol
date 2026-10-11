@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import Image from "next/image";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { getCatalog } from "@/lib/api";
 
 export type ChallengeData = {
   name: string;
@@ -19,7 +20,6 @@ export type ChallengeData = {
   availableIds?: number[];
 };
 
-export type TitleInfo = { itemId: number; name: string };
 export type TitleMap = { [itemId: number]: string };
 
 export const DataContext = createContext<{data: {challenges: { [a: number]: ChallengeData }}, titles: TitleMap, loading: boolean}>({ data: { challenges: {}}, titles: {}, loading: true });
@@ -30,22 +30,17 @@ export const DataProvider = ({children}: Readonly<{children: React.ReactNode;}>)
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		fetch("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/challenges.json")
-			.then((res) => res.json())
-			.then((data) => {
-				setData(data);
-				if (data.titles) {
-					const map: TitleMap = {};
-					for (const uuid of Object.keys(data.titles)) {
-						const t: TitleInfo = data.titles[uuid];
-						if (t.itemId != null && t.name) {
-							map[t.itemId] = t.name;
-						}
-					}
-					setTitles(map);
+		getCatalog()
+			.then((catalog) => {
+				const challenges: { [a: number]: ChallengeData } = {};
+				for (const [id, c] of Object.entries(catalog.challenges)) {
+					challenges[Number(id)] = { ...c, levelToIconPath: c.levelToIconPath ?? {} };
 				}
-				setLoading(false);
-			});
+				setData({ challenges });
+				setTitles(catalog.titles ?? {});
+			})
+			.catch((e) => console.error("catalog fetch error:", e))
+			.finally(() => setLoading(false));
 	}, []);
 
 	return (
